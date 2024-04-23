@@ -681,11 +681,33 @@ public class ResourceLinkPredicateBuilder extends BaseJoiningPredicateBuilder im
 
 			return path;
 		} else {
+			// Try to get a param for the chained reference
+			RuntimeSearchParam param = mySearchParamRegistry.getActiveSearchParam(theResourceName, theParamName);
+			if (param != null) {
+				List<String> path = param.getPathsSplit();
+
+				/*
+				 * SearchParameters can declare paths on multiple resource
+				 * types. Here we only want the ones that actually apply.
+				 */
+				path = new ArrayList<>(path);
+
+				ListIterator<String> iter = path.listIterator();
+				while (iter.hasNext()) {
+					String nextPath = trim(iter.next());
+					if (!nextPath.contains(theResourceName + ".")) {
+						iter.remove();
+					}
+				}
+
+				return path;
+			}
+
 			String paramNameHead = theParamName.substring(0, linkIndex);
 			String paramNameTail = theParamName.substring(linkIndex + 1);
 			String qualifier = theParamQualifiers.get(0);
 
-			RuntimeSearchParam param = mySearchParamRegistry.getActiveSearchParam(theResourceName, paramNameHead);
+			param = mySearchParamRegistry.getActiveSearchParam(theResourceName, paramNameHead);
 			if (param == null) {
 				// This can happen during recursion, if not all the possible target types of one link in the chain
 				// support the next link
