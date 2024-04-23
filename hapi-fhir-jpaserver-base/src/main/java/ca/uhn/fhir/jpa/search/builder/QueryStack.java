@@ -2700,18 +2700,37 @@ public class QueryStack {
 		if (!nextAnd.isEmpty() && nextAnd.get(0) instanceof ReferenceParam) {
 			ReferenceParam param = (ReferenceParam) nextAnd.get(0);
 			if (isNotBlank(param.getChain())) {
-				String fullName = theParamName + "." + param.getChain();
-				RuntimeSearchParam fullChainParam =
+				int index = 0;
+				String chain = param.getChain();
+				String remainingChain = "";
+				while (index != -1) {
+					String fullName = theParamName + "." + chain;
+
+					RuntimeSearchParam fullChainParam =
 						mySearchParamRegistry.getActiveSearchParam(theResourceName, fullName);
-				if (fullChainParam != null) {
-					List<IQueryParameterType> swappedParamTypes = nextAnd.stream()
-							.map(t -> newParameterInstance(fullChainParam, null, t.getValueAsQueryToken(myFhirContext)))
+					if (fullChainParam != null) {
+						// TODO Check the qualifier ?
+						String finalRemainingChain = remainingChain;
+						List<IQueryParameterType> swappedParamTypes = nextAnd.stream()
+							.map(t -> newParameterInstance(
+								fullChainParam, finalRemainingChain, t.getValueAsQueryToken(myFhirContext)))
 							.collect(Collectors.toList());
-					List<List<IQueryParameterType>> params = List.of(swappedParamTypes);
-					Condition predicate = createPredicateSearchParameter(
-							theSourceJoinColumn, theResourceName, fullName, params, theRequest, theRequestPartitionId);
-					andPredicates.add(predicate);
-					return true;
+						List<List<IQueryParameterType>> params = List.of(swappedParamTypes);
+						Condition predicate = createPredicateSearchParameter(
+							theSourceJoinColumn,
+							theResourceName,
+							fullName,
+							params,
+							theRequest,
+							theRequestPartitionId);
+						andPredicates.add(predicate);
+						return true;
+					}
+					index = chain.lastIndexOf('.');
+					if (index != -1) {
+						remainingChain = chain.substring(index);
+						chain = chain.substring(0, index);
+					}
 				}
 			}
 		}
