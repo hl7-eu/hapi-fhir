@@ -66,21 +66,19 @@ public class FhirResourceDaoR4SearchLastNAsyncIT extends BaseR4SearchLastN {
 		mySmallerPreFetchThresholds.add(-1);
 		myStorageSettings.setSearchPreFetchThresholds(mySmallerPreFetchThresholds);
 
-		SearchBuilder.setMaxPageSize50ForTest(true);
+		SearchBuilder.setMaxPageSizeForTest(50);
 
 		myStorageSettings.setLastNEnabled(true);
-
 	}
 
 	@AfterEach
 	public void after() {
 		myStorageSettings.setSearchPreFetchThresholds(originalPreFetchThresholds);
-		SearchBuilder.setMaxPageSize50ForTest(false);
+		SearchBuilder.setMaxPageSizeForTest(null);
 	}
 
 	@Test
 	public void testLastNChunking() {
-
 		runInTransaction(() -> {
 			Set<Long> all = mySearchDao.findAll().stream().map(Search::getId).collect(Collectors.toSet());
 
@@ -103,9 +101,6 @@ public class FhirResourceDaoR4SearchLastNAsyncIT extends BaseR4SearchLastN {
 		Map<String, String[]> requestParameters = new HashMap<>();
 		when(mySrd.getParameters()).thenReturn(requestParameters);
 
-		// Set chunk size to 50
-		SearchBuilder.setMaxPageSize50ForTest(true);
-
 		// Expand default fetch sizes to ensure all observations are returned in first page:
 		List<Integer> myBiggerPreFetchThresholds = new ArrayList<>();
 		myBiggerPreFetchThresholds.add(100);
@@ -125,9 +120,10 @@ public class FhirResourceDaoR4SearchLastNAsyncIT extends BaseR4SearchLastN {
 
 		ourLog.info("Queries:\n * " + String.join("\n * ", queries));
 
+		// 1 query to resolve the subject PIDs
 		// 3 queries to actually perform the search
 		// 1 query to lookup up Search from cache, and 2 chunked queries to retrieve resources by PID.
-		assertThat(queries).hasSize(6);
+		assertThat(queries).hasSize(7);
 
 		// The first chunked query should have a full complement of PIDs
 		StringBuilder firstQueryPattern = new StringBuilder(".*RES_ID in \\('[0-9]+'");
@@ -135,7 +131,7 @@ public class FhirResourceDaoR4SearchLastNAsyncIT extends BaseR4SearchLastN {
 			firstQueryPattern.append(",'[0-9]+'");
 		}
 		firstQueryPattern.append("\\).*");
-		assertThat(queries.get(4)).matches(firstQueryPattern.toString());
+		assertThat(queries.get(5)).matches(firstQueryPattern.toString());
 
 		// the second chunked query should be padded with "-1".
 		StringBuilder secondQueryPattern = new StringBuilder(".*RES_ID in \\('[0-9]+'");
@@ -146,7 +142,7 @@ public class FhirResourceDaoR4SearchLastNAsyncIT extends BaseR4SearchLastN {
 			secondQueryPattern.append(",'-1'");
 		}
 		secondQueryPattern.append("\\).*");
-		assertThat(queries.get(5)).matches(secondQueryPattern.toString());
+		assertThat(queries.get(6)).matches(secondQueryPattern.toString());
 
 	}
 

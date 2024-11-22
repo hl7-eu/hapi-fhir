@@ -62,7 +62,7 @@ public class ResourceIdListWorkChunkJson implements IModelJson {
 		return myRequestPartitionId;
 	}
 
-	private List<TypedPidJson> getTypedPids() {
+	public List<TypedPidJson> getTypedPids() {
 		if (myTypedPids == null) {
 			myTypedPids = new ArrayList<>();
 		}
@@ -77,7 +77,8 @@ public class ResourceIdListWorkChunkJson implements IModelJson {
 				.toString();
 	}
 
-	public <T extends IResourcePersistentId> List<T> getResourcePersistentIds(IIdHelperService<T> theIdHelperService) {
+	public <T extends IResourcePersistentId<?>> List<T> getResourcePersistentIds(
+			IIdHelperService<T> theIdHelperService) {
 		if (myTypedPids.isEmpty()) {
 			return Collections.emptyList();
 		}

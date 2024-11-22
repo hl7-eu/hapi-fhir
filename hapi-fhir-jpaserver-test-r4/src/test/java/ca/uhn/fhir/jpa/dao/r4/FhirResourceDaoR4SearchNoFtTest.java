@@ -1732,65 +1732,6 @@ public class FhirResourceDaoR4SearchNoFtTest extends BaseJpaR4Test {
 	}
 
 	@Test
-	public void testSearchByIdParam_QueryIsMinimal() {
-		// With only an _id parameter
-		{
-			SearchParameterMap params = new SearchParameterMap();
-			params.setLoadSynchronous(true);
-			params.add(PARAM_ID, new StringParam("DiagnosticReport/123"));
-			myCaptureQueriesListener.clear();
-			myDiagnosticReportDao.search(params).size();
-			List<SqlQuery> selectQueries = myCaptureQueriesListener.getSelectQueriesForCurrentThread();
-			assertThat(selectQueries).hasSize(1);
-
-			String sqlQuery = selectQueries.get(0).getSql(true, true).toLowerCase();
-			ourLog.info("SQL Query:\n{}", sqlQuery);
-			assertThat(countMatches(sqlQuery, "res_id = '123'")).as(sqlQuery).isEqualTo(1);
-			assertThat(countMatches(sqlQuery, "join")).as(sqlQuery).isEqualTo(0);
-			assertThat(countMatches(sqlQuery, "res_type = 'diagnosticreport'")).as(sqlQuery).isEqualTo(1);
-			assertThat(countMatches(sqlQuery, "res_deleted_at is null")).as(sqlQuery).isEqualTo(1);
-		}
-		// With an _id parameter and a standard search param
-		{
-			SearchParameterMap params = new SearchParameterMap();
-			params.setLoadSynchronous(true);
-			params.add(PARAM_ID, new StringParam("DiagnosticReport/123"));
-			params.add("code", new TokenParam("foo", "bar"));
-			myCaptureQueriesListener.clear();
-			myDiagnosticReportDao.search(params).size();
-			List<SqlQuery> selectQueries = myCaptureQueriesListener.getSelectQueriesForCurrentThread();
-			assertThat(selectQueries).hasSize(1);
-
-			String sqlQuery = selectQueries.get(0).getSql(true, true).toLowerCase();
-			ourLog.info("SQL Query:\n{}", sqlQuery);
-			assertThat(countMatches(sqlQuery, "res_id = '123'")).as(sqlQuery).isEqualTo(1);
-			assertThat(countMatches(sqlQuery, "join")).as(sqlQuery).isEqualTo(1);
-			assertThat(countMatches(sqlQuery, "hash_sys_and_value")).as(sqlQuery).isEqualTo(1);
-			assertThat(countMatches(sqlQuery, "res_type = 'diagnosticreport")).as(sqlQuery).isEqualTo(0); // could be 0
-			assertThat(countMatches(sqlQuery, "res_deleted_at")).as(sqlQuery).isEqualTo(0); // could be 0
-		}
-	}
-
-	@Test
-	public void testSearchByIdParamAndOtherSearchParam_QueryIsMinimal() {
-		SearchParameterMap params = new SearchParameterMap();
-		params.setLoadSynchronous(true);
-		params.add(PARAM_ID, new StringParam("DiagnosticReport/123"));
-		params.add(PARAM_ID, new StringParam("DiagnosticReport/123"));
-		myCaptureQueriesListener.clear();
-		myDiagnosticReportDao.search(params).size();
-		List<SqlQuery> selectQueries = myCaptureQueriesListener.getSelectQueriesForCurrentThread();
-		assertThat(selectQueries).hasSize(1);
-
-		String sqlQuery = selectQueries.get(0).getSql(true, true).toLowerCase();
-		ourLog.info("SQL Query:\n{}", sqlQuery);
-		assertThat(countMatches(sqlQuery, "res_id = '123'")).as(sqlQuery).isEqualTo(1);
-		assertThat(countMatches(sqlQuery, "join")).as(sqlQuery).isEqualTo(0);
-		assertThat(countMatches(sqlQuery, "res_type = 'diagnosticreport'")).as(sqlQuery).isEqualTo(1);
-		assertThat(countMatches(sqlQuery, "res_deleted_at is null")).as(sqlQuery).isEqualTo(1);
-	}
-
-	@Test
 	public void testSearchByIdParamAnd() {
 		IIdType id1;
 		{
@@ -2446,6 +2387,7 @@ public class FhirResourceDaoR4SearchNoFtTest extends BaseJpaR4Test {
 		SearchParameterMap params;
 		List<Encounter> encs;
 
+		// only upper bound -> should find encounters with period values that are
 		params = new SearchParameterMap();
 		params.add(Encounter.SP_DATE, new DateRangeParam(null, "2001-01-03"));
 		params.add(Encounter.SP_IDENTIFIER, new TokenParam("testDatePeriodParam", "02"));
@@ -2453,6 +2395,7 @@ public class FhirResourceDaoR4SearchNoFtTest extends BaseJpaR4Test {
 		assertThat(encs).hasSize(1);
 
 		params = new SearchParameterMap();
+		params.setLoadSynchronous(true);
 		params.add(Encounter.SP_DATE, new DateRangeParam("2001-01-01", "2001-01-03"));
 		params.add(Encounter.SP_IDENTIFIER, new TokenParam("testDatePeriodParam", "02"));
 		encs = toList(myEncounterDao.search(params));
@@ -2475,7 +2418,6 @@ public class FhirResourceDaoR4SearchNoFtTest extends BaseJpaR4Test {
 		params.add(Encounter.SP_IDENTIFIER, new TokenParam("testDatePeriodParam", "02"));
 		encs = toList(myEncounterDao.search(params));
 		assertThat(encs).isEmpty();
-
 	}
 
 	@Test
