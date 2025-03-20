@@ -2,7 +2,7 @@
  * #%L
  * HAPI FHIR JPA Model
  * %%
- * Copyright (C) 2014 - 2024 Smile CDR, Inc.
+ * Copyright (C) 2014 - 2025 Smile CDR, Inc.
  * %%
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,7 +24,6 @@ import ca.uhn.fhir.jpa.model.listener.IndexStorageOptimizationListener;
 import ca.uhn.fhir.model.api.IQueryParameterType;
 import jakarta.annotation.Nullable;
 import jakarta.persistence.Column;
-import jakarta.persistence.Embeddable;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EntityListeners;
 import jakarta.persistence.FetchType;
@@ -32,17 +31,18 @@ import jakarta.persistence.ForeignKey;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.IdClass;
 import jakarta.persistence.Index;
 import jakarta.persistence.JoinColumn;
+import jakarta.persistence.JoinColumns;
 import jakarta.persistence.ManyToOne;
-import jakarta.persistence.SequenceGenerator;
 import jakarta.persistence.Table;
 import org.apache.commons.lang3.builder.EqualsBuilder;
 import org.apache.commons.lang3.builder.HashCodeBuilder;
 import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.apache.commons.lang3.builder.ToStringStyle;
+import org.hibernate.annotations.GenericGenerator;
 
-@Embeddable
 @EntityListeners(IndexStorageOptimizationListener.class)
 @Entity
 @Table(
@@ -54,6 +54,7 @@ import org.apache.commons.lang3.builder.ToStringStyle;
 			@Index(name = "IDX_SP_COORDS_UPDATED", columnList = "SP_UPDATED"),
 			@Index(name = "IDX_SP_COORDS_RESID", columnList = "RES_ID")
 		})
+@IdClass(IdAndPartitionId.class)
 public class ResourceIndexedSearchParamCoords extends BaseResourceIndexedSearchParam {
 
 	public static final int MAX_LENGTH = 100;
@@ -67,7 +68,7 @@ public class ResourceIndexedSearchParamCoords extends BaseResourceIndexedSearchP
 	public Double myLongitude;
 
 	@Id
-	@SequenceGenerator(name = "SEQ_SPIDX_COORDS", sequenceName = "SEQ_SPIDX_COORDS")
+	@GenericGenerator(name = "SEQ_SPIDX_COORDS", type = ca.uhn.fhir.jpa.model.dialect.HapiSequenceStyleGenerator.class)
 	@GeneratedValue(strategy = GenerationType.AUTO, generator = "SEQ_SPIDX_COORDS")
 	@Column(name = "SP_ID")
 	private Long myId;
@@ -76,12 +77,26 @@ public class ResourceIndexedSearchParamCoords extends BaseResourceIndexedSearchP
 			optional = false,
 			fetch = FetchType.LAZY,
 			cascade = {})
-	@JoinColumn(
-			foreignKey = @ForeignKey(name = "FKC97MPK37OKWU8QVTCEG2NH9VN"),
-			name = "RES_ID",
-			referencedColumnName = "RES_ID",
-			nullable = false)
+	@JoinColumns(
+			value = {
+				@JoinColumn(
+						name = "RES_ID",
+						referencedColumnName = "RES_ID",
+						insertable = false,
+						updatable = false,
+						nullable = false),
+				@JoinColumn(
+						name = "PARTITION_ID",
+						referencedColumnName = "PARTITION_ID",
+						insertable = false,
+						updatable = false,
+						nullable = false)
+			},
+			foreignKey = @ForeignKey(name = "FKC97MPK37OKWU8QVTCEG2NH9VN"))
 	private ResourceTable myResource;
+
+	@Column(name = "RES_ID", nullable = false)
+	private Long myResourceId;
 
 	public ResourceIndexedSearchParamCoords() {}
 
@@ -142,6 +157,11 @@ public class ResourceIndexedSearchParamCoords extends BaseResourceIndexedSearchP
 		myLatitude = source.getLatitude();
 		myLongitude = source.getLongitude();
 		myHashIdentity = source.myHashIdentity;
+	}
+
+	@Override
+	public void setResourceId(Long theResourceId) {
+		myResourceId = theResourceId;
 	}
 
 	@Override

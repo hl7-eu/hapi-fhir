@@ -4,7 +4,7 @@ package ca.uhn.fhir.cr.dstu3.plandefinition;
  * #%L
  * HAPI FHIR - Clinical Reasoning
  * %%
- * Copyright (C) 2014 - 2024 Smile CDR, Inc.
+ * Copyright (C) 2014 - 2025 Smile CDR, Inc.
  * %%
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -41,6 +41,8 @@ import org.hl7.fhir.instance.model.api.IBaseResource;
 import org.opencds.cqf.fhir.utility.monad.Eithers;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
+
+import java.util.List;
 
 import static ca.uhn.fhir.cr.common.CanonicalHelper.getCanonicalType;
 
@@ -104,6 +106,7 @@ public class PlanDefinitionApplyProvider {
 			@OperationParam(name = "parameters") Parameters theParameters,
 			@OperationParam(name = "useServerData") BooleanType theUseServerData,
 			@OperationParam(name = "data") Bundle theData,
+			@OperationParam(name = "prefetchData") List<Parameters.ParametersParameterComponent> thePrefetchData,
 			@OperationParam(name = "dataEndpoint") Endpoint theDataEndpoint,
 			@OperationParam(name = "contentEndpoint") Endpoint theContentEndpoint,
 			@OperationParam(name = "terminologyEndpoint") Endpoint theTerminologyEndpoint,
@@ -126,7 +129,7 @@ public class PlanDefinitionApplyProvider {
 						theParameters,
 						theUseServerData == null ? Boolean.TRUE : theUseServerData.booleanValue(),
 						theData,
-						null,
+						thePrefetchData,
 						theDataEndpoint,
 						theContentEndpoint,
 						theTerminologyEndpoint);
@@ -150,6 +153,7 @@ public class PlanDefinitionApplyProvider {
 			@OperationParam(name = "parameters") Parameters theParameters,
 			@OperationParam(name = "useServerData") BooleanType theUseServerData,
 			@OperationParam(name = "data") Bundle theData,
+			@OperationParam(name = "prefetchData") List<Parameters.ParametersParameterComponent> thePrefetchData,
 			@OperationParam(name = "dataEndpoint") Endpoint theDataEndpoint,
 			@OperationParam(name = "contentEndpoint") Endpoint theContentEndpoint,
 			@OperationParam(name = "terminologyEndpoint") Endpoint theTerminologyEndpoint,
@@ -172,7 +176,7 @@ public class PlanDefinitionApplyProvider {
 						theParameters,
 						theUseServerData == null ? Boolean.TRUE : theUseServerData.booleanValue(),
 						theData,
-						null,
+						thePrefetchData,
 						theDataEndpoint,
 						theContentEndpoint,
 						theTerminologyEndpoint);

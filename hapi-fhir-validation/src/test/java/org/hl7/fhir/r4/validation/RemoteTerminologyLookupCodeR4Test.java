@@ -2,6 +2,7 @@ package org.hl7.fhir.r4.validation;
 
 import ca.uhn.fhir.context.FhirContext;
 import ca.uhn.fhir.context.support.IValidationSupport;
+import ca.uhn.fhir.context.support.IValidationSupport.LookupCodeResult;
 import ca.uhn.fhir.jpa.model.util.JpaConstants;
 import ca.uhn.fhir.rest.annotation.Operation;
 import ca.uhn.fhir.rest.annotation.OperationParam;
@@ -10,6 +11,8 @@ import ca.uhn.fhir.rest.client.interceptor.LoggingInterceptor;
 import ca.uhn.fhir.rest.server.exceptions.InvalidRequestException;
 import ca.uhn.fhir.rest.server.exceptions.ResourceNotFoundException;
 import ca.uhn.fhir.test.utilities.server.RestfulServerExtension;
+import ca.uhn.fhir.test.utilities.validation.IValidationProviders;
+import ca.uhn.fhir.test.utilities.validation.IValidationProvidersR4;
 import jakarta.servlet.http.HttpServletRequest;
 import org.hl7.fhir.common.hapi.validation.IRemoteTerminologyLookupCodeTest;
 import org.hl7.fhir.common.hapi.validation.support.RemoteTerminologyServiceValidationSupport;
@@ -27,6 +30,7 @@ import org.hl7.fhir.r4.model.IntegerType;
 import org.hl7.fhir.r4.model.StringType;
 import org.hl7.fhir.r4.model.Type;
 import org.hl7.fhir.r4.model.UriType;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.extension.RegisterExtension;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -39,7 +43,6 @@ import java.util.List;
 import java.util.stream.Stream;
 
 import static ca.uhn.fhir.context.support.IValidationSupport.ConceptDesignation;
-import static ca.uhn.fhir.context.support.IValidationSupport.LookupCodeResult;
 
 /**
  * Version specific tests for CodeSystem $lookup against RemoteTerminologyValidationSupport.
@@ -50,19 +53,27 @@ public class RemoteTerminologyLookupCodeR4Test implements IRemoteTerminologyLook
 	@RegisterExtension
 	public static RestfulServerExtension ourRestfulServerExtension = new RestfulServerExtension(ourCtx);
 	private final RemoteTerminologyServiceValidationSupport mySvc = new RemoteTerminologyServiceValidationSupport(ourCtx);
-	private final MyCodeSystemProviderR4 myCodeSystemProvider = new MyCodeSystemProviderR4();
+	private IValidationProvidersR4.MyCodeSystemProviderR4 myCodeSystemProvider;
+	private MyLookupCodeProviderR4 myLookupCodeProviderR4;
 
 	@BeforeEach
 	public void before() {
 		String baseUrl = "http://localhost:" + ourRestfulServerExtension.getPort();
 		mySvc.setBaseUrl(baseUrl);
 		mySvc.addClientInterceptor(new LoggingInterceptor(true));
-		ourRestfulServerExtension.getRestfulServer().registerProvider(myCodeSystemProvider);
+		myCodeSystemProvider = new IValidationProvidersR4.MyCodeSystemProviderR4();
+		myLookupCodeProviderR4 = new MyLookupCodeProviderR4();
+		ourRestfulServerExtension.getRestfulServer().registerProviders(myCodeSystemProvider, myLookupCodeProviderR4);
+	}
+
+	@AfterEach
+	public void after() {
+		ourRestfulServerExtension.getRestfulServer().unregisterProvider(List.of(myCodeSystemProvider, myLookupCodeProviderR4));
 	}
 
 	@Override
-	public IMyCodeSystemProvider getCodeSystemProvider() {
-		return myCodeSystemProvider;
+	public IValidationProviders.IMyLookupCodeProvider getLookupCodeProvider() {
+		return myLookupCodeProviderR4;
 	}
 
 	@Override
@@ -86,7 +97,6 @@ public class RemoteTerminologyLookupCodeR4Test implements IRemoteTerminologyLook
 	public void lookupCode_forCodeSystemWithPropertyEmptyValue_returnsCorrectParameters(IBaseDatatype thePropertyValue) {
 		verifyLookupWithEmptyPropertyValue(thePropertyValue);
 	}
-
 
 	public static Stream<Arguments> getPropertyValueArguments() {
 		return Stream.of(
@@ -123,7 +133,7 @@ public class RemoteTerminologyLookupCodeR4Test implements IRemoteTerminologyLook
 	@ParameterizedTest
 	@MethodSource(value = "getPropertyValueArguments")
 	public void lookupCode_forCodeSystemWithProperty_returnsCorrectProperty(IBaseDatatype thePropertyValue) {
-		verifyLookupWithProperty(List.of(thePropertyValue), List.of());
+		verifyLookupWithProperty(List.of(thePropertyValue), List.of(0));
 	}
 
 	@ParameterizedTest
@@ -155,9 +165,8 @@ public class RemoteTerminologyLookupCodeR4Test implements IRemoteTerminologyLook
 		verifyLookupWithConceptDesignation(theConceptDesignation);
 	}
 
-	static class MyCodeSystemProviderR4 implements IMyCodeSystemProvider {
-		private UriType mySystemUrl;
-		private CodeType myCode;
+	@SuppressWarnings("unused")
+	static class MyLookupCodeProviderR4 implements IValidationProviders.IMyLookupCodeProvider {
 		private LookupCodeResult myLookupCodeResult;
 
 		@Override
@@ -182,8 +191,6 @@ public class RemoteTerminologyLookupCodeR4Test implements IRemoteTerminologyLook
 			@OperationParam(name = "property", max = OperationParam.MAX_UNLIMITED) List<CodeType> thePropertyNames,
 			RequestDetails theRequestDetails
 		) {
-			myCode = theCode;
-			mySystemUrl = theSystem;
 			if (theSystem == null) {
 				throw new InvalidRequestException(MessageFormat.format(MESSAGE_RESPONSE_INVALID, theCode));
 			}
@@ -195,16 +202,6 @@ public class RemoteTerminologyLookupCodeR4Test implements IRemoteTerminologyLook
 		@Override
 		public Class<? extends IBaseResource> getResourceType() {
 			return CodeSystem.class;
-		}
-
-		@Override
-		public String getCode() {
-			return myCode != null ? myCode.getValueAsString() : null;
-		}
-
-		@Override
-		public String getSystem() {
-			return mySystemUrl != null ? mySystemUrl.getValueAsString() : null;
 		}
 	}
 }

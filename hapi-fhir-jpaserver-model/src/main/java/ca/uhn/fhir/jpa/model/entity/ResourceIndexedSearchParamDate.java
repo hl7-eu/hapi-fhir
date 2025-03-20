@@ -2,7 +2,7 @@
  * #%L
  * HAPI FHIR JPA Model
  * %%
- * Copyright (C) 2014 - 2024 Smile CDR, Inc.
+ * Copyright (C) 2014 - 2025 Smile CDR, Inc.
  * %%
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -28,7 +28,6 @@ import ca.uhn.fhir.rest.param.DateParam;
 import ca.uhn.fhir.rest.param.DateRangeParam;
 import ca.uhn.fhir.util.DateUtils;
 import jakarta.persistence.Column;
-import jakarta.persistence.Embeddable;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EntityListeners;
 import jakarta.persistence.FetchType;
@@ -36,10 +35,11 @@ import jakarta.persistence.ForeignKey;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.IdClass;
 import jakarta.persistence.Index;
 import jakarta.persistence.JoinColumn;
+import jakarta.persistence.JoinColumns;
 import jakarta.persistence.ManyToOne;
-import jakarta.persistence.SequenceGenerator;
 import jakarta.persistence.Table;
 import jakarta.persistence.Temporal;
 import jakarta.persistence.TemporalType;
@@ -49,6 +49,7 @@ import org.apache.commons.lang3.builder.EqualsBuilder;
 import org.apache.commons.lang3.builder.HashCodeBuilder;
 import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.apache.commons.lang3.builder.ToStringStyle;
+import org.hibernate.annotations.GenericGenerator;
 import org.hibernate.search.mapper.pojo.mapping.definition.annotation.FullTextField;
 import org.hl7.fhir.r4.model.DateTimeType;
 
@@ -56,7 +57,6 @@ import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 
-@Embeddable
 @EntityListeners(IndexStorageOptimizationListener.class)
 @Entity
 @Table(
@@ -79,6 +79,7 @@ import java.util.Date;
 					columnList =
 							"RES_ID,HASH_IDENTITY,SP_VALUE_LOW,SP_VALUE_HIGH,SP_VALUE_LOW_DATE_ORDINAL,SP_VALUE_HIGH_DATE_ORDINAL,PARTITION_ID"),
 		})
+@IdClass(IdAndPartitionId.class)
 public class ResourceIndexedSearchParamDate extends BaseResourceIndexedSearchParam {
 
 	private static final long serialVersionUID = 1L;
@@ -107,7 +108,7 @@ public class ResourceIndexedSearchParamDate extends BaseResourceIndexedSearchPar
 	private transient String myOriginalValue;
 
 	@Id
-	@SequenceGenerator(name = "SEQ_SPIDX_DATE", sequenceName = "SEQ_SPIDX_DATE")
+	@GenericGenerator(name = "SEQ_SPIDX_DATE", type = ca.uhn.fhir.jpa.model.dialect.HapiSequenceStyleGenerator.class)
 	@GeneratedValue(strategy = GenerationType.AUTO, generator = "SEQ_SPIDX_DATE")
 	@Column(name = "SP_ID")
 	private Long myId;
@@ -116,12 +117,26 @@ public class ResourceIndexedSearchParamDate extends BaseResourceIndexedSearchPar
 			optional = false,
 			fetch = FetchType.LAZY,
 			cascade = {})
-	@JoinColumn(
-			nullable = false,
-			name = "RES_ID",
-			referencedColumnName = "RES_ID",
+	@JoinColumns(
+			value = {
+				@JoinColumn(
+						name = "RES_ID",
+						referencedColumnName = "RES_ID",
+						insertable = false,
+						updatable = false,
+						nullable = false),
+				@JoinColumn(
+						name = "PARTITION_ID",
+						referencedColumnName = "PARTITION_ID",
+						insertable = false,
+						updatable = false,
+						nullable = false)
+			},
 			foreignKey = @ForeignKey(name = "FK_SP_DATE_RES"))
 	private ResourceTable myResource;
+
+	@Column(name = "RES_ID", nullable = false)
+	private Long myResourceId;
 
 	/**
 	 * Constructor
@@ -228,6 +243,11 @@ public class ResourceIndexedSearchParamDate extends BaseResourceIndexedSearchPar
 		myValueHighDateOrdinal = source.myValueHighDateOrdinal;
 		myValueLowDateOrdinal = source.myValueLowDateOrdinal;
 		myHashIdentity = source.myHashIdentity;
+	}
+
+	@Override
+	public void setResourceId(Long theResourceId) {
+		myResourceId = theResourceId;
 	}
 
 	@Override

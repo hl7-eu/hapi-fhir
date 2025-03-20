@@ -2,7 +2,7 @@
  * #%L
  * HAPI FHIR JPA Server
  * %%
- * Copyright (C) 2014 - 2024 Smile CDR, Inc.
+ * Copyright (C) 2014 - 2025 Smile CDR, Inc.
  * %%
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -39,6 +39,10 @@ public abstract class BasePredicateBuilder {
 
 	public BasePredicateBuilder(SearchQueryBuilder theSearchSqlBuilder) {
 		mySearchSqlBuilder = theSearchSqlBuilder;
+	}
+
+	protected SearchQueryBuilder getSearchQueryBuilder() {
+		return mySearchSqlBuilder;
 	}
 
 	PartitionSettings getPartitionSettings() {
@@ -84,7 +88,7 @@ public abstract class BasePredicateBuilder {
 		return mySearchSqlBuilder.getOrCreateFirstPredicateBuilder(theIncludeResourceTypeAndNonDeletedFlag);
 	}
 
-	public void addJoin(DbTable theFromTable, DbTable theToTable, DbColumn theFromColumn, DbColumn theToColumn) {
+	public void addJoin(DbTable theFromTable, DbTable theToTable, DbColumn[] theFromColumn, DbColumn[] theToColumn) {
 		mySearchSqlBuilder.addJoin(theFromTable, theToTable, theFromColumn, theToColumn);
 	}
 }

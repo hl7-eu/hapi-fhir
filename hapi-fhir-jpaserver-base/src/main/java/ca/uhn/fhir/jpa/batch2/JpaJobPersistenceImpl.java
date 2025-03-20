@@ -2,7 +2,7 @@
  * #%L
  * HAPI FHIR JPA Server
  * %%
- * Copyright (C) 2014 - 2024 Smile CDR, Inc.
+ * Copyright (C) 2014 - 2025 Smile CDR, Inc.
  * %%
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,6 +21,8 @@ package ca.uhn.fhir.jpa.batch2;
 
 import ca.uhn.fhir.batch2.api.IJobPersistence;
 import ca.uhn.fhir.batch2.api.JobOperationResultJson;
+import ca.uhn.fhir.batch2.model.BatchInstanceStatusDTO;
+import ca.uhn.fhir.batch2.model.BatchWorkChunkStatusDTO;
 import ca.uhn.fhir.batch2.model.FetchJobInstancesRequest;
 import ca.uhn.fhir.batch2.model.JobInstance;
 import ca.uhn.fhir.batch2.model.StatusEnum;
@@ -54,7 +56,6 @@ import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.LockModeType;
-import jakarta.persistence.Query;
 import org.apache.commons.collections4.ListUtils;
 import org.apache.commons.lang3.Validate;
 import org.slf4j.Logger;
@@ -258,6 +259,22 @@ public class JpaJobPersistenceImpl implements IJobPersistence {
 				.execute(() -> myJobInstanceRepository.findById(theInstanceId).map(this::toInstance));
 	}
 
+	@Nonnull
+	@Override
+	public List<BatchWorkChunkStatusDTO> fetchWorkChunkStatusForInstance(String theInstanceId) {
+		return myTransactionService
+				.withSystemRequestOnDefaultPartition()
+				.execute(() -> myWorkChunkRepository.fetchWorkChunkStatusForInstance(theInstanceId));
+	}
+
+	@Nonnull
+	@Override
+	public BatchInstanceStatusDTO fetchBatchInstanceStatus(String theInstanceId) {
+		return myTransactionService
+				.withSystemRequestOnDefaultPartition()
+				.execute(() -> myJobInstanceRepository.fetchBatchInstanceStatus(theInstanceId));
+	}
+
 	@Override
 	@Transactional(propagation = Propagation.REQUIRES_NEW)
 	public List<JobInstance> fetchInstances(FetchJobInstancesRequest theRequest, int thePage, int theBatchSize) {
@@ -363,15 +380,10 @@ public class JpaJobPersistenceImpl implements IJobPersistence {
 		return myTransactionService.withSystemRequestOnDefaultPartition().execute(() -> {
 			int changeCount = myWorkChunkRepository.updateChunkStatusAndIncrementErrorCountForEndError(
 					chunkId, new Date(), errorMessage, WorkChunkStatusEnum.ERRORED);
-			Validate.isTrue(changeCount > 0, "changed chunk matching %s", chunkId);
+			Validate.isTrue(changeCount > 0, "No changed chunk matching %s", chunkId);
 
-			Query query = myEntityManager.createQuery("update Batch2WorkChunkEntity " + "set myStatus = :failed "
-					+ ",myErrorMessage = CONCAT('Too many errors: ', CAST(myErrorCount as string), '. Last error msg was ', myErrorMessage) "
-					+ "where myId = :chunkId and myErrorCount > :maxCount");
-			query.setParameter("chunkId", chunkId);
-			query.setParameter("failed", WorkChunkStatusEnum.FAILED);
-			query.setParameter("maxCount", MAX_CHUNK_ERROR_COUNT);
-			int failChangeCount = query.executeUpdate();
+			int failChangeCount = myWorkChunkRepository.updateChunkForTooManyErrors(
+					WorkChunkStatusEnum.FAILED, chunkId, MAX_CHUNK_ERROR_COUNT, ERROR_MSG_MAX_LENGTH);
 
 			if (failChangeCount > 0) {
 				return WorkChunkStatusEnum.FAILED;
@@ -524,8 +536,15 @@ public class JpaJobPersistenceImpl implements IJobPersistence {
 
 	@Override
 	public boolean updateInstance(String theInstanceId, JobInstanceUpdateCallback theModifier) {
-		Batch2JobInstanceEntity instanceEntity =
-				myEntityManager.find(Batch2JobInstanceEntity.class, theInstanceId, LockModeType.PESSIMISTIC_WRITE);
+		/*
+		 * We may already have a copy of the entity in the L1 cache, and it may be
+		 * stale if the scheduled maintenance service has touched it recently. So
+		 * we fetch it and then refresh-lock it so that we don't fail if someone
+		 * else has touched it.
+		 */
+		Batch2JobInstanceEntity instanceEntity = myEntityManager.find(Batch2JobInstanceEntity.class, theInstanceId);
+		myEntityManager.refresh(instanceEntity, LockModeType.PESSIMISTIC_WRITE);
+
 		if (null == instanceEntity) {
 			ourLog.error("No instance found with Id {}", theInstanceId);
 			return false;

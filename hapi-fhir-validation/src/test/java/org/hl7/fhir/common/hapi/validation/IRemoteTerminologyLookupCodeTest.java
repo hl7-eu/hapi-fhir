@@ -2,6 +2,7 @@ package org.hl7.fhir.common.hapi.validation;
 
 import ca.uhn.fhir.context.support.IValidationSupport.LookupCodeResult;
 import ca.uhn.fhir.context.support.LookupCodeRequest;
+import ca.uhn.fhir.test.utilities.validation.IValidationProviders;
 import org.hl7.fhir.common.hapi.validation.support.RemoteTerminologyServiceValidationSupport;
 import org.junit.jupiter.api.Test;
 
@@ -23,7 +24,7 @@ public interface IRemoteTerminologyLookupCodeTest extends ILookupCodeTest {
 	default void lookupCode_forCodeSystemWithCodeNotFound_returnsNotFound() {
 		String baseUrl = getService().getBaseUrl();
 		final String codeNotFound = "a";
-		final String system = CODE_SYSTEM;
+		final String system = IValidationProviders.CODE_SYSTEM;
 		final String codeAndSystem = system + "#" + codeNotFound;
 		final String exceptionMessage = MessageFormat.format(MESSAGE_RESPONSE_NOT_FOUND, codeNotFound);
 		LookupCodeResult result = new LookupCodeResult()
@@ -31,7 +32,7 @@ public interface IRemoteTerminologyLookupCodeTest extends ILookupCodeTest {
 				.setSearchedForCode(codeNotFound)
 				.setSearchedForSystem(system)
 				.setErrorMessage("Unknown code \"" + codeAndSystem + "\". The Remote Terminology server " + baseUrl + " returned HTTP 404 Not Found: " + exceptionMessage);
-		getCodeSystemProvider().setLookupCodeResult(result);
+		getLookupCodeProvider().setLookupCodeResult(result);
 
 		LookupCodeRequest request =  new LookupCodeRequest(system, codeNotFound, null, null);
 		verifyLookupCodeResult(request, result);
@@ -49,9 +50,11 @@ public interface IRemoteTerminologyLookupCodeTest extends ILookupCodeTest {
 				.setSearchedForCode(codeNotFound)
 				.setSearchedForSystem(system)
 				.setErrorMessage("Unknown code \"" + codeAndSystem + "\". The Remote Terminology server " + baseUrl + " returned HTTP 400 Bad Request: " + exceptionMessage);
-		getCodeSystemProvider().setLookupCodeResult(result);
+		getLookupCodeProvider().setLookupCodeResult(result);
 
 		LookupCodeRequest request =  new LookupCodeRequest(system, codeNotFound, null, null);
 		verifyLookupCodeResult(request, result);
 	}
+
+
 }

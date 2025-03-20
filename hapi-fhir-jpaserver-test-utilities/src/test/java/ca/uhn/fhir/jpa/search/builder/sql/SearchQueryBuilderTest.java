@@ -4,6 +4,7 @@ import ca.uhn.fhir.context.FhirContext;
 import ca.uhn.fhir.interceptor.model.RequestPartitionId;
 import ca.uhn.fhir.jpa.config.HibernatePropertiesProvider;
 import ca.uhn.fhir.jpa.model.config.PartitionSettings;
+import ca.uhn.fhir.jpa.model.dao.JpaPid;
 import ca.uhn.fhir.jpa.model.dialect.HapiFhirMariaDBDialect;
 import ca.uhn.fhir.jpa.model.dialect.HapiFhirOracleDialect;
 import ca.uhn.fhir.jpa.model.entity.StorageSettings;
@@ -55,7 +56,7 @@ public class SearchQueryBuilderTest {
 		HibernatePropertiesProvider dialectProvider = new HibernatePropertiesProvider();
 		dialectProvider.setDialectForUnitTest(new SQLServerDialect());
 		SearchQueryBuilder builder = new SearchQueryBuilder(myFhirContext, myStorageSettings, myPartitionSettings, myRequestPartitionId, "Patient", mySqlBuilderFactory, dialectProvider, false);
-		builder.addResourceIdsPredicate(Lists.newArrayList(500L, 501L));
+		builder.addResourceIdsPredicate(Lists.newArrayList(JpaPid.fromId(500L), JpaPid.fromId(501L)));
 		GeneratedSql generated;
 
 		// No range
@@ -65,12 +66,12 @@ public class SearchQueryBuilderTest {
 
 		// Max only
 		generated = builder.generate(null, 10);
-		assertEquals("SELECT T0.RES_ID FROM HFJ_RESOURCE T0 WHERE (((T0.RES_TYPE = ?) AND (T0.RES_DELETED_AT IS NULL)) AND (T0.RES_ID IN (?,?) )) ORDER BY @@VERSION OFFSET 0 ROWS FETCH FIRST ? ROWS ONLY", generated.getSql().toUpperCase(Locale.ROOT));
+		assertEquals("SELECT T0.RES_ID FROM HFJ_RESOURCE T0 WHERE (((T0.RES_TYPE = ?) AND (T0.RES_DELETED_AT IS NULL)) AND (T0.RES_ID IN (?,?) )) ORDER BY RES_ID OFFSET 0 ROWS FETCH FIRST ? ROWS ONLY", generated.getSql().toUpperCase(Locale.ROOT));
 		assertThat(generated.getBindVariables()).as(generated.getBindVariables().toString()).containsExactly("Patient", 500L, 501L, 10);
 
 		// Range
 		generated = builder.generate(10, 5);
-		assertEquals("SELECT t0.RES_ID FROM HFJ_RESOURCE t0 WHERE (((t0.RES_TYPE = ?) AND (t0.RES_DELETED_AT IS NULL)) AND (t0.RES_ID IN (?,?) )) order by @@version offset ? rows fetch next ? rows only", generated.getSql());
+		assertEquals("SELECT t0.RES_ID FROM HFJ_RESOURCE t0 WHERE (((t0.RES_TYPE = ?) AND (t0.RES_DELETED_AT IS NULL)) AND (t0.RES_ID IN (?,?) )) order by RES_ID offset ? rows fetch next ? rows only", generated.getSql());
 		assertThat(generated.getBindVariables()).as(generated.getBindVariables().toString()).containsExactly("Patient", 500L, 501L, 10, 5);
 
 	}
@@ -81,7 +82,7 @@ public class SearchQueryBuilderTest {
 		HibernatePropertiesProvider dialectProvider = new HibernatePropertiesProvider();
 		dialectProvider.setDialectForUnitTest(new SQLServerDialect());
 		SearchQueryBuilder builder = new SearchQueryBuilder(myFhirContext, myStorageSettings, myPartitionSettings, myRequestPartitionId, "Patient", mySqlBuilderFactory, dialectProvider, false);
-		builder.addResourceIdsPredicate(Lists.newArrayList(500L, 501L));
+		builder.addResourceIdsPredicate(Lists.newArrayList(JpaPid.fromId(500L), JpaPid.fromId(501L)));
 		builder.addSortDate(builder.getOrCreateResourceTablePredicateBuilder().getColumnLastUpdated(), true);
 		GeneratedSql generated;
 
@@ -109,7 +110,7 @@ public class SearchQueryBuilderTest {
 		HibernatePropertiesProvider dialectProvider = new HibernatePropertiesProvider();
 		dialectProvider.setDialectForUnitTest(new SQLServer2012Dialect());
 		SearchQueryBuilder builder = new SearchQueryBuilder(myFhirContext, myStorageSettings, myPartitionSettings, myRequestPartitionId, "Patient", mySqlBuilderFactory, dialectProvider, false);
-		builder.addResourceIdsPredicate(Lists.newArrayList(500L, 501L));
+		builder.addResourceIdsPredicate(Lists.newArrayList(JpaPid.fromId(500L), JpaPid.fromId(501L)));
 		GeneratedSql generated;
 
 		// No range
@@ -119,12 +120,12 @@ public class SearchQueryBuilderTest {
 
 		// Max only
 		generated = builder.generate(null, 10);
-		assertEquals("SELECT T0.RES_ID FROM HFJ_RESOURCE T0 WHERE (((T0.RES_TYPE = ?) AND (T0.RES_DELETED_AT IS NULL)) AND (T0.RES_ID IN (?,?) )) ORDER BY @@VERSION OFFSET 0 ROWS FETCH FIRST ? ROWS ONLY", generated.getSql().toUpperCase(Locale.ROOT));
+		assertEquals("SELECT T0.RES_ID FROM HFJ_RESOURCE T0 WHERE (((T0.RES_TYPE = ?) AND (T0.RES_DELETED_AT IS NULL)) AND (T0.RES_ID IN (?,?) )) ORDER BY RES_ID OFFSET 0 ROWS FETCH FIRST ? ROWS ONLY", generated.getSql().toUpperCase(Locale.ROOT));
 		assertThat(generated.getBindVariables()).as(generated.getBindVariables().toString()).containsExactly("Patient", 500L, 501L, 10);
 
 		// Range
 		generated = builder.generate(10, 5);
-		assertEquals("SELECT t0.RES_ID FROM HFJ_RESOURCE t0 WHERE (((t0.RES_TYPE = ?) AND (t0.RES_DELETED_AT IS NULL)) AND (t0.RES_ID IN (?,?) )) order by @@version offset ? rows fetch next ? rows only", generated.getSql());
+		assertEquals("SELECT t0.RES_ID FROM HFJ_RESOURCE t0 WHERE (((t0.RES_TYPE = ?) AND (t0.RES_DELETED_AT IS NULL)) AND (t0.RES_ID IN (?,?) )) order by RES_ID offset ? rows fetch next ? rows only", generated.getSql());
 		assertThat(generated.getBindVariables()).as(generated.getBindVariables().toString()).containsExactly("Patient", 500L, 501L, 10, 5);
 
 	}
@@ -135,7 +136,7 @@ public class SearchQueryBuilderTest {
 		HibernatePropertiesProvider dialectProvider = new HibernatePropertiesProvider();
 		dialectProvider.setDialectForUnitTest(new SQLServer2012Dialect());
 		SearchQueryBuilder builder = new SearchQueryBuilder(myFhirContext, myStorageSettings, myPartitionSettings, myRequestPartitionId, "Patient", mySqlBuilderFactory, dialectProvider, false);
-		builder.addResourceIdsPredicate(Lists.newArrayList(500L, 501L));
+		builder.addResourceIdsPredicate(Lists.newArrayList(JpaPid.fromId(500L), JpaPid.fromId(501L)));
 		builder.addSortDate(builder.getOrCreateResourceTablePredicateBuilder().getColumnLastUpdated(), true);
 		GeneratedSql generated;
 
@@ -162,7 +163,7 @@ public class SearchQueryBuilderTest {
 		HibernatePropertiesProvider dialectProvider = new HibernatePropertiesProvider();
 		dialectProvider.setDialectForUnitTest(new PostgreSQLDialect());
 		SearchQueryBuilder builder = new SearchQueryBuilder(myFhirContext, myStorageSettings, myPartitionSettings, myRequestPartitionId, "Patient", mySqlBuilderFactory, dialectProvider, false);
-		builder.addResourceIdsPredicate(Lists.newArrayList(500L, 501L));
+		builder.addResourceIdsPredicate(Lists.newArrayList(JpaPid.fromId(500L), JpaPid.fromId(501L)));
 		GeneratedSql generated;
 
 		// No range
@@ -188,7 +189,7 @@ public class SearchQueryBuilderTest {
 		HibernatePropertiesProvider dialectProvider = new HibernatePropertiesProvider();
 		dialectProvider.setDialectForUnitTest(new PostgreSQLDialect());
 		SearchQueryBuilder builder = new SearchQueryBuilder(myFhirContext, myStorageSettings, myPartitionSettings, myRequestPartitionId, "Patient", mySqlBuilderFactory, dialectProvider, false);
-		builder.addResourceIdsPredicate(Lists.newArrayList(500L, 501L));
+		builder.addResourceIdsPredicate(Lists.newArrayList(JpaPid.fromId(500L), JpaPid.fromId(501L)));
 		builder.addSortDate(builder.getOrCreateResourceTablePredicateBuilder().getColumnLastUpdated(), true);
 		GeneratedSql generated;
 
@@ -215,7 +216,7 @@ public class SearchQueryBuilderTest {
 		HibernatePropertiesProvider dialectProvider = new HibernatePropertiesProvider();
 		dialectProvider.setDialectForUnitTest(new HapiFhirOracleDialect());
 		SearchQueryBuilder builder = new SearchQueryBuilder(myFhirContext, myStorageSettings, myPartitionSettings, myRequestPartitionId, "Patient", mySqlBuilderFactory, dialectProvider, false);
-		builder.addResourceIdsPredicate(Lists.newArrayList(500L, 501L));
+		builder.addResourceIdsPredicate(Lists.newArrayList(JpaPid.fromId(500L), JpaPid.fromId(501L)));
 		GeneratedSql generated;
 
 		// No range
@@ -241,7 +242,7 @@ public class SearchQueryBuilderTest {
 		HibernatePropertiesProvider dialectProvider = new HibernatePropertiesProvider();
 		dialectProvider.setDialectForUnitTest(new HapiFhirOracleDialect());
 		SearchQueryBuilder builder = new SearchQueryBuilder(myFhirContext, myStorageSettings, myPartitionSettings, myRequestPartitionId, "Patient", mySqlBuilderFactory, dialectProvider, false);
-		builder.addResourceIdsPredicate(Lists.newArrayList(500L, 501L));
+		builder.addResourceIdsPredicate(Lists.newArrayList(JpaPid.fromId(500L), JpaPid.fromId(501L)));
 		builder.addSortDate(builder.getOrCreateResourceTablePredicateBuilder().getColumnLastUpdated(), true);
 		GeneratedSql generated;
 
@@ -268,7 +269,7 @@ public class SearchQueryBuilderTest {
 		HibernatePropertiesProvider dialectProvider = new HibernatePropertiesProvider();
 		dialectProvider.setDialectForUnitTest(new MySQL8Dialect());
 		SearchQueryBuilder builder = new SearchQueryBuilder(myFhirContext, myStorageSettings, myPartitionSettings, myRequestPartitionId, "Patient", mySqlBuilderFactory, dialectProvider, false);
-		builder.addResourceIdsPredicate(Lists.newArrayList(500L, 501L));
+		builder.addResourceIdsPredicate(Lists.newArrayList(JpaPid.fromId(500L), JpaPid.fromId(501L)));
 		GeneratedSql generated;
 
 		// No range
@@ -294,7 +295,7 @@ public class SearchQueryBuilderTest {
 		HibernatePropertiesProvider dialectProvider = new HibernatePropertiesProvider();
 		dialectProvider.setDialectForUnitTest(new MySQL8Dialect());
 		SearchQueryBuilder builder = new SearchQueryBuilder(myFhirContext, myStorageSettings, myPartitionSettings, myRequestPartitionId, "Patient", mySqlBuilderFactory, dialectProvider, false);
-		builder.addResourceIdsPredicate(Lists.newArrayList(500L, 501L));
+		builder.addResourceIdsPredicate(Lists.newArrayList(JpaPid.fromId(500L), JpaPid.fromId(501L)));
 		builder.addSortDate(builder.getOrCreateResourceTablePredicateBuilder().getColumnLastUpdated(), true);
 		GeneratedSql generated;
 
@@ -325,7 +326,7 @@ public class SearchQueryBuilderTest {
 		HibernatePropertiesProvider dialectProvider = new HibernatePropertiesProvider();
 		dialectProvider.setDialectForUnitTest(new HapiFhirMariaDBDialect());
 		SearchQueryBuilder builder = new SearchQueryBuilder(myFhirContext, myStorageSettings, myPartitionSettings, myRequestPartitionId, "Patient", mySqlBuilderFactory, dialectProvider, false);
-		builder.addResourceIdsPredicate(Lists.newArrayList(500L, 501L));
+		builder.addResourceIdsPredicate(Lists.newArrayList(JpaPid.fromId(500L), JpaPid.fromId(501L)));
 		GeneratedSql generated;
 
 		// No range
@@ -351,7 +352,7 @@ public class SearchQueryBuilderTest {
 		HibernatePropertiesProvider dialectProvider = new HibernatePropertiesProvider();
 		dialectProvider.setDialectForUnitTest(new HapiFhirMariaDBDialect());
 		SearchQueryBuilder builder = new SearchQueryBuilder(myFhirContext, myStorageSettings, myPartitionSettings, myRequestPartitionId, "Patient", mySqlBuilderFactory, dialectProvider, false);
-		builder.addResourceIdsPredicate(Lists.newArrayList(500L, 501L));
+		builder.addResourceIdsPredicate(Lists.newArrayList(JpaPid.fromId(500L), JpaPid.fromId(501L)));
 		builder.addSortDate(builder.getOrCreateResourceTablePredicateBuilder().getColumnLastUpdated(), true);
 		GeneratedSql generated;
 
@@ -382,7 +383,7 @@ public class SearchQueryBuilderTest {
 		HibernatePropertiesProvider dialectProvider = new HibernatePropertiesProvider();
 		dialectProvider.setDialectForUnitTest(new DerbyDialect());
 		SearchQueryBuilder builder = new SearchQueryBuilder(myFhirContext, myStorageSettings, myPartitionSettings, myRequestPartitionId, "Patient", mySqlBuilderFactory, dialectProvider, false);
-		builder.addResourceIdsPredicate(Lists.newArrayList(500L, 501L));
+		builder.addResourceIdsPredicate(Lists.newArrayList(JpaPid.fromId(500L), JpaPid.fromId(501L)));
 		GeneratedSql generated;
 
 		// No range
@@ -408,7 +409,7 @@ public class SearchQueryBuilderTest {
 		HibernatePropertiesProvider dialectProvider = new HibernatePropertiesProvider();
 		dialectProvider.setDialectForUnitTest(new DerbyDialect());
 		SearchQueryBuilder builder = new SearchQueryBuilder(myFhirContext, myStorageSettings, myPartitionSettings, myRequestPartitionId, "Patient", mySqlBuilderFactory, dialectProvider, false);
-		builder.addResourceIdsPredicate(Lists.newArrayList(500L, 501L));
+		builder.addResourceIdsPredicate(Lists.newArrayList(JpaPid.fromId(500L), JpaPid.fromId(501L)));
 		builder.addSortDate(builder.getOrCreateResourceTablePredicateBuilder().getColumnLastUpdated(), true);
 		GeneratedSql generated;
 

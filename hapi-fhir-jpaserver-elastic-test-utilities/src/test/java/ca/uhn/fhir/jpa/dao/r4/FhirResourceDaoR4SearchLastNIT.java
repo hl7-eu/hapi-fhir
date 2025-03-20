@@ -45,7 +45,7 @@ public class FhirResourceDaoR4SearchLastNIT extends BaseR4SearchLastN {
 
 	@AfterEach
 	public void reset() {
-		SearchBuilder.setMaxPageSize50ForTest(false);
+		SearchBuilder.setMaxPageSizeForTest(null);
 		myStorageSettings.setStoreResourceInHSearchIndex(new JpaStorageSettings().isStoreResourceInHSearchIndex());
 		myStorageSettings.setAdvancedHSearchIndexing(new JpaStorageSettings().isAdvancedHSearchIndexing());
 	}
@@ -77,8 +77,12 @@ public class FhirResourceDaoR4SearchLastNIT extends BaseR4SearchLastN {
 		when(mySrd.getParameters()).thenReturn(requestParameters);
 
 		// Set chunk size to 50
-		SearchBuilder.setMaxPageSize50ForTest(true);
+		SearchBuilder.setMaxPageSizeForTest(50);
 
+		// Run once to fill caches
+		toUnqualifiedVersionlessIdValues(myObservationDao.observationsLastN(params, mockSrd(), null));
+
+		// Actually test
 		myCaptureQueriesListener.clear();
 		List<String> results = toUnqualifiedVersionlessIdValues(myObservationDao.observationsLastN(params, mockSrd(), null));
 		assertThat(results).hasSize(75);
@@ -93,14 +97,14 @@ public class FhirResourceDaoR4SearchLastNIT extends BaseR4SearchLastN {
 		assertThat(queries).hasSize(4);
 
 		// The first and third chunked queries should have a full complement of PIDs
-		StringBuilder firstQueryPattern = new StringBuilder(".*RES_ID IN \\('[0-9]+'");
+		StringBuilder firstQueryPattern = new StringBuilder(".*RES_ID\\)? IN \\('[0-9]+'");
         firstQueryPattern.append(",'[0-9]+'".repeat(49));
 		firstQueryPattern.append("\\).*");
 		assertThat(queries.get(0).toUpperCase().replaceAll(" , ", ",")).matches(firstQueryPattern.toString());
 		assertThat(queries.get(2).toUpperCase().replaceAll(" , ", ",")).matches(firstQueryPattern.toString());
 
 		// the second and fourth chunked queries should be padded with "-1".
-		StringBuilder secondQueryPattern = new StringBuilder(".*RES_ID IN \\('[0-9]+'");
+		StringBuilder secondQueryPattern = new StringBuilder(".*RES_ID\\)? IN \\('[0-9]+'");
         secondQueryPattern.append(",'[0-9]+'".repeat(24));
         secondQueryPattern.append(",'-1'".repeat(25));
 		secondQueryPattern.append("\\).*");

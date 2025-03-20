@@ -2,7 +2,7 @@
  * #%L
  * HAPI FHIR - Clinical Reasoning
  * %%
- * Copyright (C) 2014 - 2024 Smile CDR, Inc.
+ * Copyright (C) 2014 - 2025 Smile CDR, Inc.
  * %%
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,6 +22,9 @@ package ca.uhn.fhir.cr.common;
 import ca.uhn.fhir.rest.api.server.RequestDetails;
 import org.opencds.cqf.fhir.cr.questionnaireresponse.QuestionnaireResponseProcessor;
 
+/**
+ * This interface takes a RequestDetails object and uses it to create a Repository which is passed to the constructor of the processor class being instantiated.
+ */
 @FunctionalInterface
 public interface IQuestionnaireResponseProcessorFactory {
 	QuestionnaireResponseProcessor create(RequestDetails theRequestDetails);

@@ -2,7 +2,7 @@
  * #%L
  * HAPI FHIR JPA Server - Batch2 Task Processor
  * %%
- * Copyright (C) 2014 - 2024 Smile CDR, Inc.
+ * Copyright (C) 2014 - 2025 Smile CDR, Inc.
  * %%
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -38,11 +38,18 @@ public class RetryChunkLaterException extends RuntimeException {
 	private final Duration myNextPollDuration;
 
 	public RetryChunkLaterException() {
-		this(ONE_MINUTE);
+		this("", ONE_MINUTE);
 	}
 
+	/**
+	 * For HAPI exceptions, use {@link RetryChunkLaterException#RetryChunkLaterException(String, Duration)}
+	 */
 	public RetryChunkLaterException(Duration theDuration) {
-		super();
+		this("", theDuration);
+	}
+
+	public RetryChunkLaterException(String theCode, Duration theDuration) {
+		super(theCode);
 		this.myNextPollDuration = theDuration;
 	}
 

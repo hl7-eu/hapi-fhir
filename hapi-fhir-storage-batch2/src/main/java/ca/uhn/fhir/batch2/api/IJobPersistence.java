@@ -2,7 +2,7 @@
  * #%L
  * HAPI FHIR JPA Server - Batch2 Task Processor
  * %%
- * Copyright (C) 2014 - 2024 Smile CDR, Inc.
+ * Copyright (C) 2014 - 2025 Smile CDR, Inc.
  * %%
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,6 +19,8 @@
  */
 package ca.uhn.fhir.batch2.api;
 
+import ca.uhn.fhir.batch2.model.BatchInstanceStatusDTO;
+import ca.uhn.fhir.batch2.model.BatchWorkChunkStatusDTO;
 import ca.uhn.fhir.batch2.model.FetchJobInstancesRequest;
 import ca.uhn.fhir.batch2.model.JobDefinition;
 import ca.uhn.fhir.batch2.model.JobInstance;
@@ -76,6 +78,12 @@ public interface IJobPersistence extends IWorkChunkPersistence {
 	// on implementations @Transactional(propagation = Propagation.REQUIRES_NEW)
 	List<JobInstance> fetchInstances(
 			String theJobDefinitionId, Set<StatusEnum> theStatuses, Date theCutoff, Pageable thePageable);
+
+	@Nonnull
+	List<BatchWorkChunkStatusDTO> fetchWorkChunkStatusForInstance(String theInstanceId);
+
+	@Nonnull
+	BatchInstanceStatusDTO fetchBatchInstanceStatus(String theInstanceId);
 
 	/**
 	 * Fetches any existing jobs matching provided request parameters

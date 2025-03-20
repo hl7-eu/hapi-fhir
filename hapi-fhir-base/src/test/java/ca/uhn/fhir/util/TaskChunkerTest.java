@@ -37,7 +37,7 @@ public class TaskChunkerTest {
 		List<Integer> input = newIntRangeList(0, 35);
 
 		// Execute
-		new TaskChunker<Integer>().chunk(input, 10, myConsumer);
+		TaskChunker.chunk(input, 10, myConsumer);
 
 		// Verify
 		verify(myConsumer, times(4)).accept(myConsumerCaptor.capture());
@@ -77,5 +77,4 @@ public class TaskChunkerTest {
 			Arguments.of(List.of(1,2,3,4,5,6,7,8,9), List.of(List.of(1,2,3), List.of(4,5,6), List.of(7,8,9)))
 		);
 	}
-
 }

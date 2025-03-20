@@ -1,5 +1,7 @@
 package ca.uhn.fhir.jpa.dao.r4;
 
+import ca.uhn.fhir.interceptor.api.IInterceptorService;
+import ca.uhn.fhir.jpa.api.dao.DaoRegistry;
 import ca.uhn.fhir.jpa.dao.IFulltextSearchSvc;
 import ca.uhn.fhir.jpa.model.dao.JpaPid;
 import ca.uhn.fhir.jpa.search.builder.SearchBuilder;
@@ -17,21 +19,65 @@ import ca.uhn.fhir.rest.param.TokenOrListParam;
 import ca.uhn.fhir.rest.param.TokenParam;
 import org.hl7.fhir.r4.model.Organization;
 import org.hl7.fhir.r4.model.Patient;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.InvalidDataAccessApiUsageException;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
+import javax.sql.DataSource;
 import java.util.ArrayList;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-public class FhirSearchDaoR4Test extends BaseJpaR4Test {
+public class FhirSearchDaoR4Test extends BaseJpaR4Test implements IR4SearchIndexTests {
+
+	private static final Logger ourLog = LoggerFactory.getLogger(FhirSearchDaoR4Test.class);
 
 	@Autowired
 	private IFulltextSearchSvc mySearchDao;
+
+	@Autowired
+	private DataSource myDataSource;
+
+	@Override
+	@BeforeEach
+	public void before() throws Exception {
+		super.before();
+		SearchBuilder.setMaxPageSizeForTest(10);
+		myStorageSettings.setHibernateSearchIndexFullText(true);
+	}
+
+
+	@AfterEach
+	public void after() {
+		SearchBuilder.setMaxPageSizeForTest(null);
+	}
+
+	@Override
+	public IInterceptorService getInterceptorService() {
+		return myInterceptorRegistry;
+	}
+
+	@Override
+	public Logger getLogger() {
+		return ourLog;
+	}
+
+	@Override
+	public DaoRegistry getDaoRegistry() {
+		return myDaoRegistry;
+	}
+
+	@Override
+	public DataSource getDataSource() {
+		return myDataSource;
+	}
 
 	@Test
 	public void testDaoCallRequiresTransaction() {
@@ -260,107 +306,6 @@ public class FhirSearchDaoR4Test extends BaseJpaR4Test {
 			List<JpaPid> found = mySearchDao.search(resourceName, map, SystemRequestDetails.newSystemRequestAllPartitions());
 			assertThat(JpaPid.toLongList(found)).isEmpty();
 		}
-	}
-
-	@Test
-	public void testSearchNarrativeWithLuceneSearch() {
-		final int numberOfPatientsToCreate = SearchBuilder.getMaximumPageSize() + 10;
-		List<String> expectedActivePatientIds = new ArrayList<>(numberOfPatientsToCreate);
-
-		for (int i = 0; i < numberOfPatientsToCreate; i++)
-		{
-			Patient patient = new Patient();
-			patient.getText().setDivAsString("<div>AAAS<p>FOO</p> CCC    </div>");
-			expectedActivePatientIds.add(myPatientDao.create(patient, mySrd).getId().toUnqualifiedVersionless().getIdPart());
-		}
-
-		{
-			Patient patient = new Patient();
-			patient.getText().setDivAsString("<div>AAAB<p>FOO</p> CCC    </div>");
-			myPatientDao.create(patient, mySrd);
-		}
-		{
-			Patient patient = new Patient();
-			patient.getText().setDivAsString("<div>ZZYZXY</div>");
-			myPatientDao.create(patient, mySrd);
-		}
-
-		SearchParameterMap map = new SearchParameterMap().setLoadSynchronous(true);
-		map.add(Constants.PARAM_TEXT, new StringParam("AAAS"));
-
-		IBundleProvider searchResultBundle = myPatientDao.search(map, mySrd);
-		List<String> resourceIdsFromSearchResult = searchResultBundle.getAllResourceIds();
-
-		assertThat(resourceIdsFromSearchResult).containsExactlyInAnyOrderElementsOf(expectedActivePatientIds);
-	}
-
-	@Test
-	public void testLuceneNarrativeSearchQueryIntersectingJpaQuery() {
-		final int numberOfPatientsToCreate = SearchBuilder.getMaximumPageSize() + 10;
-		List<String> expectedActivePatientIds = new ArrayList<>(numberOfPatientsToCreate);
-
-		// create active and non-active patients with the same narrative
-		for (int i = 0; i < numberOfPatientsToCreate; i++)
-		{
-			Patient activePatient = new Patient();
-			activePatient.getText().setDivAsString("<div>AAAS<p>FOO</p> CCC    </div>");
-			activePatient.setActive(true);
-			String patientId = myPatientDao.create(activePatient, mySrd).getId().toUnqualifiedVersionless().getIdPart();
-			expectedActivePatientIds.add(patientId);
-
-			Patient nonActivePatient = new Patient();
-			nonActivePatient.getText().setDivAsString("<div>AAAS<p>FOO</p> CCC    </div>");
-			nonActivePatient.setActive(false);
-			myPatientDao.create(nonActivePatient, mySrd);
-		}
-
-		SearchParameterMap map = new SearchParameterMap().setLoadSynchronous(true);
-
-		TokenAndListParam tokenAndListParam = new TokenAndListParam();
-		tokenAndListParam.addAnd(new TokenOrListParam().addOr(new TokenParam().setValue("true")));
-
-		map.add("active", tokenAndListParam);
-		map.add(Constants.PARAM_TEXT, new StringParam("AAAS"));
-
-		IBundleProvider searchResultBundle = myPatientDao.search(map, mySrd);
-		List<String> resourceIdsFromSearchResult = searchResultBundle.getAllResourceIds();
-
-		assertThat(resourceIdsFromSearchResult).containsExactlyInAnyOrderElementsOf(expectedActivePatientIds);
-	}
-
-	@Test
-	public void testLuceneContentSearchQueryIntersectingJpaQuery() {
-		final int numberOfPatientsToCreate = SearchBuilder.getMaximumPageSize() + 10;
-		final String patientFamilyName = "Flanders";
-		List<String> expectedActivePatientIds = new ArrayList<>(numberOfPatientsToCreate);
-
-		// create active and non-active patients with the same narrative
-		for (int i = 0; i < numberOfPatientsToCreate; i++)
-		{
-			Patient activePatient = new Patient();
-			activePatient.addName().setFamily(patientFamilyName);
-			activePatient.setActive(true);
-			String patientId = myPatientDao.create(activePatient, mySrd).getId().toUnqualifiedVersionless().getIdPart();
-			expectedActivePatientIds.add(patientId);
-
-			Patient nonActivePatient = new Patient();
-			nonActivePatient.addName().setFamily(patientFamilyName);
-			nonActivePatient.setActive(false);
-			myPatientDao.create(nonActivePatient, mySrd);
-		}
-
-		SearchParameterMap map = new SearchParameterMap().setLoadSynchronous(true);
-
-		TokenAndListParam tokenAndListParam = new TokenAndListParam();
-		tokenAndListParam.addAnd(new TokenOrListParam().addOr(new TokenParam().setValue("true")));
-
-		map.add("active", tokenAndListParam);
-		map.add(Constants.PARAM_CONTENT, new StringParam(patientFamilyName));
-
-		IBundleProvider searchResultBundle = myPatientDao.search(map, mySrd);
-		List<String> resourceIdsFromSearchResult = searchResultBundle.getAllResourceIds();
-
-		assertThat(resourceIdsFromSearchResult).containsExactlyInAnyOrderElementsOf(expectedActivePatientIds);
 	}
 
 }

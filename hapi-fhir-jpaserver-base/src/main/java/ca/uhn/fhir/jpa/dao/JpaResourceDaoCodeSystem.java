@@ -2,7 +2,7 @@
  * #%L
  * HAPI FHIR JPA Server
  * %%
- * Copyright (C) 2014 - 2024 Smile CDR, Inc.
+ * Copyright (C) 2014 - 2025 Smile CDR, Inc.
  * %%
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -27,7 +27,11 @@ import ca.uhn.fhir.context.support.IValidationSupport.CodeValidationResult;
 import ca.uhn.fhir.context.support.LookupCodeRequest;
 import ca.uhn.fhir.context.support.ValidationSupportContext;
 import ca.uhn.fhir.i18n.Msg;
+import ca.uhn.fhir.jpa.api.config.JpaStorageSettings;
 import ca.uhn.fhir.jpa.api.dao.IFhirResourceDaoCodeSystem;
+import ca.uhn.fhir.jpa.api.dao.ReindexOutcome;
+import ca.uhn.fhir.jpa.api.dao.ReindexParameters;
+import ca.uhn.fhir.jpa.api.model.ReindexJobStatus;
 import ca.uhn.fhir.jpa.api.svc.IIdHelperService;
 import ca.uhn.fhir.jpa.model.cross.IBasePersistedResource;
 import ca.uhn.fhir.jpa.model.entity.ResourceTable;
@@ -176,6 +180,47 @@ public class JpaResourceDaoCodeSystem<T extends IBaseResource> extends BaseHapiF
 		myTermDeferredStorageSvc.deleteCodeSystemForResource(theEntityToDelete);
 	}
 
+	/**
+	 * If there are more code systems to process
+	 * than {@link JpaStorageSettings#getDeferIndexingForCodesystemsOfSize()},
+	 * then these codes will have their processing deferred (for a later time).
+	 *
+	 * This can result in future reindex steps *skipping* these code systems (if
+	 * they're still deferred) and thus incorrect expansions resulting.
+	 *
+	 * So we override the reindex method for CodeSystems specifically to
+	 * force reindex batch jobs to wait until all code systems are processed before
+	 * moving on.
+	 */
+	@SuppressWarnings("rawtypes")
+	@Override
+	public ReindexOutcome reindex(
+			IResourcePersistentId thePid,
+			ReindexParameters theReindexParameters,
+			RequestDetails theRequest,
+			TransactionDetails theTransactionDetails) {
+		ReindexOutcome outcome = super.reindex(thePid, theReindexParameters, theRequest, theTransactionDetails);
+
+		if (outcome.getWarnings().isEmpty()) {
+			outcome.setHasPendingWork(true);
+		}
+		return outcome;
+	}
+
+	@Override
+	public ReindexJobStatus getReindexJobStatus() {
+		boolean isQueueEmpty = myTermDeferredStorageSvc.isStorageQueueEmpty(true);
+
+		ReindexJobStatus status = new ReindexJobStatus();
+		status.setHasReindexWorkPending(!isQueueEmpty);
+		if (status.isHasReindexWorkPending()) {
+			// force a run
+			myTermDeferredStorageSvc.saveDeferred();
+		}
+
+		return status;
+	}
+
 	@Override
 	public ResourceTable updateEntity(
 			RequestDetails theRequest,
@@ -187,6 +232,7 @@ public class JpaResourceDaoCodeSystem<T extends IBaseResource> extends BaseHapiF
 			TransactionDetails theTransactionDetails,
 			boolean theForceUpdate,
 			boolean theCreateNewHistoryEntry) {
+
 		ResourceTable retVal = super.updateEntity(
 				theRequest,
 				theResource,
@@ -197,13 +243,24 @@ public class JpaResourceDaoCodeSystem<T extends IBaseResource> extends BaseHapiF
 				theTransactionDetails,
 				theForceUpdate,
 				theCreateNewHistoryEntry);
-		if (!retVal.isUnchangedInCurrentOperation()) {
+		if (thePerformIndexing) {
+			if (!retVal.isUnchangedInCurrentOperation()) {
 
-			org.hl7.fhir.r4.model.CodeSystem cs = myVersionCanonicalizer.codeSystemToCanonical(theResource);
-			addPidToResource(theEntity, cs);
+				org.hl7.fhir.r4.model.CodeSystem cs = myVersionCanonicalizer.codeSystemToCanonical(theResource);
+				addPidToResource(theEntity, cs);
 
-			myTerminologyCodeSystemStorageSvc.storeNewCodeSystemVersionIfNeeded(
-					cs, (ResourceTable) theEntity, theRequest);
+				myTerminologyCodeSystemStorageSvc.storeNewCodeSystemVersionIfNeeded(
+						cs, (ResourceTable) theEntity, theRequest);
+			}
+
+			/*
+			 * Flushing for each stored resource hurts performance, but in this case
+			 * it's justified because we don't expect people to be submitting
+			 * CodeSystem resources at super high rates, and we need to have the
+			 * various writes finished in case a second entry in the same transaction
+			 * tries to create a duplicate codesystem.
+			 */
+			myEntityManager.flush();
 		}
 
 		return retVal;

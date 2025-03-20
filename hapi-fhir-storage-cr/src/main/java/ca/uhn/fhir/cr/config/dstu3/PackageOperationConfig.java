@@ -2,7 +2,7 @@
  * #%L
  * HAPI FHIR - Clinical Reasoning
  * %%
- * Copyright (C) 2014 - 2024 Smile CDR, Inc.
+ * Copyright (C) 2014 - 2025 Smile CDR, Inc.
  * %%
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -46,6 +46,16 @@ public class PackageOperationConfig {
 		return new ca.uhn.fhir.cr.dstu3.questionnaire.QuestionnairePackageProvider();
 	}
 
+	@Bean
+	ca.uhn.fhir.cr.dstu3.library.LibraryPackageProvider dstu3LibraryPackageProvider() {
+		return new ca.uhn.fhir.cr.dstu3.library.LibraryPackageProvider();
+	}
+
+	@Bean
+	ca.uhn.fhir.cr.dstu3.valueset.ValueSetPackageProvider dstu3ValueSetPackageProvider() {
+		return new ca.uhn.fhir.cr.dstu3.valueset.ValueSetPackageProvider();
+	}
+
 	@Bean(name = "packageOperationLoader")
 	public ProviderLoader packageOperationLoader(
 			ApplicationContext theApplicationContext, FhirContext theFhirContext, RestfulServer theRestfulServer) {
@@ -54,8 +64,10 @@ public class PackageOperationConfig {
 				Map.of(
 						FhirVersionEnum.DSTU3,
 						Arrays.asList(
+								ca.uhn.fhir.cr.dstu3.library.LibraryPackageProvider.class,
 								ca.uhn.fhir.cr.dstu3.questionnaire.QuestionnairePackageProvider.class,
-								ca.uhn.fhir.cr.dstu3.plandefinition.PlanDefinitionPackageProvider.class)));
+								ca.uhn.fhir.cr.dstu3.plandefinition.PlanDefinitionPackageProvider.class,
+								ca.uhn.fhir.cr.dstu3.valueset.ValueSetPackageProvider.class)));
 
 		return new ProviderLoader(theRestfulServer, theApplicationContext, selector);
 	}

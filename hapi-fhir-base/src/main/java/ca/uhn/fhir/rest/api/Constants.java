@@ -2,7 +2,7 @@
  * #%L
  * HAPI FHIR - Core Library
  * %%
- * Copyright (C) 2014 - 2024 Smile CDR, Inc.
+ * Copyright (C) 2014 - 2025 Smile CDR, Inc.
  * %%
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -115,6 +115,7 @@ public class Constants {
 	public static final String HEADER_AUTHORIZATION_VALPREFIX_BASIC = "Basic ";
 	public static final String HEADER_AUTHORIZATION_VALPREFIX_BEARER = "Bearer ";
 	public static final String HEADER_CACHE_CONTROL = "Cache-Control";
+	public static final String HEADER_CLIENT_TIMEZONE = "Timezone";
 	public static final String HEADER_CONTENT_DISPOSITION = "Content-Disposition";
 	public static final String HEADER_CONTENT_ENCODING = "Content-Encoding";
 	public static final String HEADER_CONTENT_LOCATION = "Content-Location";
@@ -340,6 +341,8 @@ public class Constants {
 	 * Application configuration key used to enable or disable Hibernate Envers.
 	 */
 	public static final String HIBERNATE_INTEGRATION_ENVERS_ENABLED = "hibernate.integration.envers.enabled";
+
+	public static final String OPENTELEMETRY_BASE_NAME = "io.hapifhir";
 
 	static {
 		CHARSET_UTF8 = StandardCharsets.UTF_8;

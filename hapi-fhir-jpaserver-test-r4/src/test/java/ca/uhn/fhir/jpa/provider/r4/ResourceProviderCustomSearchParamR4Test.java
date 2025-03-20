@@ -1,16 +1,13 @@
 package ca.uhn.fhir.jpa.provider.r4;
 
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
-import ca.uhn.fhir.batch2.jobs.reindex.ReindexAppCtx;
 import ca.uhn.fhir.batch2.jobs.reindex.ReindexJobParameters;
 import ca.uhn.fhir.batch2.model.JobInstance;
 import ca.uhn.fhir.i18n.Msg;
 import ca.uhn.fhir.interceptor.api.Hook;
 import ca.uhn.fhir.interceptor.api.Pointcut;
 import ca.uhn.fhir.jpa.api.config.JpaStorageSettings;
-import ca.uhn.fhir.jpa.dao.BaseHapiFhirDao;
 import ca.uhn.fhir.jpa.entity.Search;
+import ca.uhn.fhir.jpa.model.entity.EntityIndexStatusEnum;
 import ca.uhn.fhir.jpa.model.entity.ResourceIndexedSearchParamString;
 import ca.uhn.fhir.jpa.model.entity.ResourceTable;
 import ca.uhn.fhir.jpa.model.search.SearchStatusEnum;
@@ -47,7 +44,6 @@ import org.hl7.fhir.r4.model.Reference;
 import org.hl7.fhir.r4.model.SearchParameter;
 import org.hl7.fhir.r4.model.SearchParameter.XPathUsageType;
 import org.hl7.fhir.r4.model.StringType;
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.transaction.TransactionStatus;
@@ -60,24 +56,17 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+import static ca.uhn.fhir.batch2.jobs.reindex.ReindexUtils.JOB_REINDEX;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.fail;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.fail;
 
 
 public class ResourceProviderCustomSearchParamR4Test extends BaseResourceProviderR4Test {
 
 	private static final org.slf4j.Logger ourLog = org.slf4j.LoggerFactory.getLogger(ResourceProviderCustomSearchParamR4Test.class);
-
-
-	@Override
-	@AfterEach
-	public void after() throws Exception {
-		super.after();
-		myStorageSettings.setDefaultSearchParamsCanBeOverridden(new JpaStorageSettings().isDefaultSearchParamsCanBeOverridden());
-		myStorageSettings.setAllowContainsSearches(new JpaStorageSettings().isAllowContainsSearches());
-	}
 
 	@BeforeEach
 	@Override
@@ -225,9 +214,9 @@ public class ResourceProviderCustomSearchParamR4Test extends BaseResourceProvide
 
 		runInTransaction(() -> {
 			ResourceTable res = myResourceTableDao.findById(patId.getIdPartAsLong()).orElseThrow(IllegalStateException::new);
-			assertEquals(BaseHapiFhirDao.INDEX_STATUS_INDEXED, res.getIndexStatus().longValue());
+			assertEquals(EntityIndexStatusEnum.INDEXED_RDBMS_ONLY, res.getIndexStatus());
 			res = myResourceTableDao.findById(obsId.getIdPartAsLong()).orElseThrow(IllegalStateException::new);
-			assertEquals(BaseHapiFhirDao.INDEX_STATUS_INDEXED, res.getIndexStatus().longValue());
+			assertEquals(EntityIndexStatusEnum.INDEXED_RDBMS_ONLY, res.getIndexStatus());
 		});
 
 		SearchParameter fooSp = new SearchParameter();
@@ -244,7 +233,7 @@ public class ResourceProviderCustomSearchParamR4Test extends BaseResourceProvide
 		runInTransaction(() -> {
 			myBatch2JobHelper.forceRunMaintenancePass();
 
-			List<JobInstance> allJobs = myBatch2JobHelper.findJobsByDefinition(ReindexAppCtx.JOB_REINDEX);
+			List<JobInstance> allJobs = myBatch2JobHelper.findJobsByDefinition(JOB_REINDEX);
 			assertEquals(1, allJobs.size());
 			assertEquals(1, allJobs.get(0).getParameters(ReindexJobParameters.class).getPartitionedUrls().size());
 			assertEquals("Patient?", allJobs.get(0).getParameters(ReindexJobParameters.class).getPartitionedUrls().get(0).getUrl());
@@ -403,7 +392,7 @@ public class ResourceProviderCustomSearchParamR4Test extends BaseResourceProvide
 		mySearchParameterDao.create(fooSp, mySrd);
 
 		mySearchParamRegistry.forceRefresh();
-		assertNotNull(mySearchParamRegistry.getActiveSearchParam("Patient", "foo"));
+		assertNotNull(mySearchParamRegistry.getActiveSearchParam("Patient", "foo", null));
 
 		Patient pat = new Patient();
 		pat.setGender(AdministrativeGender.MALE);

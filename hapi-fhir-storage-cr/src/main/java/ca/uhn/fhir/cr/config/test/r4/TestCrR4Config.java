@@ -2,7 +2,7 @@
  * #%L
  * HAPI FHIR - Clinical Reasoning
  * %%
- * Copyright (C) 2014 - 2024 Smile CDR, Inc.
+ * Copyright (C) 2014 - 2025 Smile CDR, Inc.
  * %%
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -69,8 +69,8 @@ public class TestCrR4Config {
 	@Bean
 	CareGapsProperties careGapsProperties()  {
 		var careGapsProperties = new CareGapsProperties();
-		careGapsProperties.setCareGapsReporter("Organization/alphora");
-		careGapsProperties.setCareGapsCompositionSectionAuthor("Organization/alphora-author");
+		careGapsProperties.setCareGapsReporter("alphora");
+		careGapsProperties.setCareGapsCompositionSectionAuthor("alphora-author");
 		return careGapsProperties;
 	}
 

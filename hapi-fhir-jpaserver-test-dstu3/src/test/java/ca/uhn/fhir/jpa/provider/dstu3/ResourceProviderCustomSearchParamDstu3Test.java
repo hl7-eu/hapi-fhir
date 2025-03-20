@@ -1,12 +1,12 @@
 package ca.uhn.fhir.jpa.provider.dstu3;
 
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
-import ca.uhn.fhir.batch2.jobs.reindex.ReindexAppCtx;
 import ca.uhn.fhir.batch2.jobs.reindex.ReindexJobParameters;
 import ca.uhn.fhir.batch2.model.JobInstance;
 import ca.uhn.fhir.i18n.Msg;
 import ca.uhn.fhir.jpa.dao.BaseHapiFhirDao;
+import ca.uhn.fhir.jpa.model.dao.JpaPid;
+import ca.uhn.fhir.jpa.model.entity.EntityIndexStatusEnum;
+import ca.uhn.fhir.jpa.model.entity.ResourceTable;
 import ca.uhn.fhir.jpa.model.entity.StorageSettings;
 import ca.uhn.fhir.jpa.model.entity.ResourceTable;
 import ca.uhn.fhir.jpa.searchparam.SearchParameterMap;
@@ -46,9 +46,11 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import static ca.uhn.fhir.batch2.jobs.reindex.ReindexUtils.JOB_REINDEX;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.fail;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.fail;
 
 
@@ -186,10 +188,10 @@ public class ResourceProviderCustomSearchParamDstu3Test extends BaseResourceProv
 		obs2.setStatus(ObservationStatus.FINAL);
 		IIdType obsId = myObservationDao.create(obs2, mySrd).getId().toUnqualifiedVersionless();
 
-		ResourceTable res = myResourceTableDao.findById(patId.getIdPartAsLong()).orElseThrow(IllegalStateException::new);
-		assertEquals(BaseHapiFhirDao.INDEX_STATUS_INDEXED, res.getIndexStatus().longValue());
-		res = myResourceTableDao.findById(obsId.getIdPartAsLong()).orElseThrow(IllegalStateException::new);
-		assertEquals(BaseHapiFhirDao.INDEX_STATUS_INDEXED, res.getIndexStatus().longValue());
+		ResourceTable res = runInTransaction(()->myResourceTableDao.findById(patId.getIdPartAsLong()).orElseThrow(IllegalStateException::new));
+		assertEquals(EntityIndexStatusEnum.INDEXED_RDBMS_ONLY, res.getIndexStatus());
+		res = runInTransaction(()->myResourceTableDao.findById(obsId.getIdPartAsLong()).orElseThrow(IllegalStateException::new));
+		assertEquals(EntityIndexStatusEnum.INDEXED_RDBMS_ONLY, res.getIndexStatus());
 
 		SearchParameter fooSp = new SearchParameter();
 		fooSp.addBase("Patient");
@@ -202,7 +204,7 @@ public class ResourceProviderCustomSearchParamDstu3Test extends BaseResourceProv
 		mySearchParameterDao.create(fooSp, mySrd);
 
 		runInTransaction(()->{
-			List<JobInstance> allJobs = myBatch2JobHelper.findJobsByDefinition(ReindexAppCtx.JOB_REINDEX);
+			List<JobInstance> allJobs = myBatch2JobHelper.findJobsByDefinition(JOB_REINDEX);
 			assertEquals(1, allJobs.size());
 			assertEquals(1, allJobs.get(0).getParameters(ReindexJobParameters.class).getPartitionedUrls().size());
 			assertEquals("Patient?", allJobs.get(0).getParameters(ReindexJobParameters.class).getPartitionedUrls().get(0).getUrl());

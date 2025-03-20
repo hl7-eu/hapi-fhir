@@ -2,7 +2,7 @@
  * #%L
  * HAPI FHIR - Clinical Reasoning
  * %%
- * Copyright (C) 2014 - 2024 Smile CDR, Inc.
+ * Copyright (C) 2014 - 2025 Smile CDR, Inc.
  * %%
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,7 +19,8 @@
  */
 package ca.uhn.fhir.cr.r4.measure;
 
-import ca.uhn.fhir.cr.r4.IMeasureServiceFactory;
+import ca.uhn.fhir.cr.common.StringTimePeriodHandler;
+import ca.uhn.fhir.cr.r4.R4MeasureEvaluatorSingleFactory;
 import ca.uhn.fhir.rest.annotation.IdParam;
 import ca.uhn.fhir.rest.annotation.Operation;
 import ca.uhn.fhir.rest.annotation.OperationParam;
@@ -34,11 +35,18 @@ import org.hl7.fhir.r4.model.Measure;
 import org.hl7.fhir.r4.model.MeasureReport;
 import org.hl7.fhir.r4.model.Parameters;
 import org.opencds.cqf.fhir.utility.monad.Eithers;
-import org.springframework.beans.factory.annotation.Autowired;
 
 public class MeasureOperationsProvider {
-	@Autowired
-	IMeasureServiceFactory myR4MeasureServiceFactory;
+
+	private final R4MeasureEvaluatorSingleFactory myR4MeasureServiceFactory;
+	private final StringTimePeriodHandler myStringTimePeriodHandler;
+
+	public MeasureOperationsProvider(
+			R4MeasureEvaluatorSingleFactory theR4MeasureServiceFactory,
+			StringTimePeriodHandler theStringTimePeriodHandler) {
+		myR4MeasureServiceFactory = theR4MeasureServiceFactory;
+		myStringTimePeriodHandler = theStringTimePeriodHandler;
+	}
 
 	/**
 	 * Implements the <a href=
@@ -82,8 +90,8 @@ public class MeasureOperationsProvider {
 				.create(theRequestDetails)
 				.evaluate(
 						Eithers.forMiddle3(theId),
-						thePeriodStart,
-						thePeriodEnd,
+						myStringTimePeriodHandler.getStartZonedDateTime(thePeriodStart, theRequestDetails),
+						myStringTimePeriodHandler.getEndZonedDateTime(thePeriodEnd, theRequestDetails),
 						theReportType,
 						theSubject,
 						theLastReceivedOn,

@@ -2,7 +2,7 @@
  * #%L
  * HAPI FHIR JPA Server
  * %%
- * Copyright (C) 2014 - 2024 Smile CDR, Inc.
+ * Copyright (C) 2014 - 2025 Smile CDR, Inc.
  * %%
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -202,6 +202,12 @@ public class PartitionLookupSvcImpl implements IPartitionLookupSvc {
 		}
 
 		myPartitionDao.delete(partition.get());
+
+		if (myInterceptorService.hasHooks(Pointcut.STORAGE_PARTITION_DELETED)) {
+			HookParams params = new HookParams()
+					.add(RequestPartitionId.class, partition.get().toRequestPartitionId());
+			myInterceptorService.callHooks(Pointcut.STORAGE_PARTITION_DELETED, params);
+		}
 
 		invalidateCaches();
 	}
